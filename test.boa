@@ -1,0 +1,24 @@
+x = 5.0
+readreal x
+write x
+
+y = (3.0 + 1.0)
+write y
+
+z = ((2.0 * 9.0)/ 3.0)
+write z
+
+readint integer
+write integer
+
+andbool = (true and false)
+write andbool
+
+orbool = (false or true)
+write orbool
+
+xorbool = ((true and false) xor (neg false))
+write xorbool
+
+shortcircuitbool = ((false & true) & true)
+write shortcircuitbool
