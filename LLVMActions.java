@@ -286,7 +286,6 @@ public class LLVMActions extends boaBaseListener {
     public void exitReadstr(boaParser.ReadstrContext ctx){
       String ID = ctx.ID().getText();
       if( ! variables.containsKey(ID) ) {
-         System.out.println(variables.containsKey(ID));
          variables.put(ID, VarType.STRING);
       }
        LLVMGenerator.scanf_string(ID, BUFFER_SIZE);

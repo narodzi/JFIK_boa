@@ -52,7 +52,7 @@ class LLVMGenerator {
        reg++;
        main_text += "store i8* %"+(reg-1)+", i8** %"+id+"\n"; 
        str++;
-       main_text += "%"+reg+" = call i32 (i8*, ...) @__isoc99_scanf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @strsi, i32 0, i32 0), i8* %"+(reg-1)+")\n";
+       main_text += "%"+reg+" = call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @strsi, i32 0, i32 0), i8* %"+(reg-1)+")\n";
        reg++;
     }
 
@@ -236,7 +236,6 @@ class LLVMGenerator {
        text += "declare i8* @strcpy(i8*, i8*)\n";
        text += "declare i8* @strcat(i8*, i8*)\n";
        text += "declare i32 @atoi(i8*)\n";
-       text += "declare i32 @__isoc99_scanf(i8*, ...)\n";
        text += "declare void @llvm.memcpy.p0i8.p0i8.i64(i8* noalias nocapture writeonly, i8* noalias nocapture readonly, i64, i1 immarg)\n";
        text += "@strps = constant [4 x i8] c\"%s\\0A\\00\"\n";
        text += "@strpi = constant [4 x i8] c\"%d\\0A\\00\"\n";
