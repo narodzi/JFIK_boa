@@ -23,3 +23,5 @@ clean:
 	rm -f *.tokens
 	rm -f *.bc
 	rm -f *.interp
+	rm -rf output
+	rm -rf .antlr
