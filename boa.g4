@@ -8,11 +8,13 @@ stat:   WRTIE ID	#write
     | READREAL ID   #readreal
     | READSTR ID    #readstr
 	| ID '=' value	#assign
+    | 'struct' ID '{' NEWLINE (TYPE ID NEWLINE)+ '}' #defStruct
+    | ID '=' ID '(' (value)* ')' #newStruct
    ;
 
-value: ID
-    | mathExpr
-    | boolExpr
+value: mathExpr 
+    | boolExpr 
+    | variable
     ;	
 
 expr0: expr1 #single0
@@ -37,6 +39,7 @@ mathExpr: INT           #int
         | TOINT mathExpr    #toint
         | TOREAL mathExpr   #toreal
         | TOSTR mathExpr    #tostr
+        | variable        #single4
         | '(' expr0 ')'     #par
     ;
 
@@ -59,8 +62,13 @@ bexpr3: boolExpr #singleb3
     ;
 
 boolExpr: BOOLEAN          #boolean
+        | variable   #singleb4
         | '(' bexpr0 ')' #bpar
     ;
+
+variable: ID #idVal;
+
+TYPE: 'int' | 'real' | 'bool';
 
 READINT:	'readint' 
    ;
@@ -98,10 +106,10 @@ NEG: 'neg'
 TOSTR: '(str)'
     ;
 
-ID:   ('a'..'z'|'A'..'Z')+
+ID:   ('a'..'z'|'A'..'Z'|'.')+
    ;
 
-REAL: [0-9]+.[0-9]+
+REAL: [0-9]+'.'[0-9]+
     ;
 
 INT:   [0-9]+

@@ -5,6 +5,39 @@ class LLVMGenerator {
    static int reg = 1;
    static int str = 1;
 
+   //structures
+   static void declare_i32_struct_variable() {
+      header_text += " i32,";
+   }
+
+   static void declare_double_struct_variable() {
+      header_text += " double,";
+   }
+
+   static void declare_boolean_struct_variable() {
+      header_text += " i1,";
+   }
+
+   static void begin_struct_declaration(String name) {
+      header_text += "%" + name + " = type {";
+   }
+
+   static void end_struct_declaration() {
+      header_text = header_text.substring(0, header_text.length()-1);
+      header_text += " }\n";
+   }
+
+   static void define_structure(String name, String structureType) {
+      main_text += "%" + name + " = alloca %" + structureType + "\n";
+   }
+
+   static void assign_value_to_structure_variable(String structTypeName, String structName, String variableName, int varIndex) {
+      main_text +=  variableName + " = getelementptr %" + structTypeName + ", %" + structTypeName + "* " + structName + ", i32 0, i32 " + varIndex + "\n";
+   }
+
+   //structures end
+
+
    static void printf_i32(String id){
        main_text += "%"+reg+" = load i32, i32* %"+id+"\n";
        reg++;
@@ -29,10 +62,7 @@ class LLVMGenerator {
     static void printf_boolean(String id){
       main_text += "%" + reg + " = load i1, i1* %" + id + "\n";
       reg++;
-      main_text += "%" + reg
-            + " = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([4 x i8], [4 x i8]* @strpi, i32 0, i32 0), i1 %"
-            + (reg - 1) + ")\n";
-      reg++;
+      main_text += "call void @print_bool(i1 %" + (reg-1) + ")\n"; 
    }
 
     static void scanf_i32(String id){
@@ -75,7 +105,7 @@ class LLVMGenerator {
     static void declare_boolean(String id) {
       main_text += "%" + id + " = alloca i1\n";
    }
- 
+
     static void assign_i32(String id, String value){
        main_text += "store i32 "+value+", i32* %"+id+"\n";
     }
@@ -88,7 +118,7 @@ class LLVMGenerator {
        main_text += "store i8* %"+(reg-1)+", i8** %"+id+"\n";
     }
 
-    static void assing_boolean(String id, String value) {
+    static void assign_boolean(String id, String value) {
       main_text += "store i1 " + value + ", i1* %" + id + "\n";
    }
 
@@ -243,6 +273,20 @@ class LLVMGenerator {
        text += "@strs = constant [3 x i8] c\"%d\\00\"\n";
        text += "@strsi = constant [3 x i8] c\"%s\\00\"\n";
        text += "@strsd = constant [4 x i8] c\"%lf\\00\"\n";
+       text += "@true_str = constant [6 x i8] c\"true\n\\00\"\n";
+       text += "@false_str = constant [7 x i8] c\"false\n\\00\"\n";
+       text += "define void @print_bool(i1 %bool_val) {\n" +
+         "%cond = icmp ne i1 %bool_val, 0\n"+
+         "br i1 %cond, label %true_label, label %false_label\n"+
+         "true_label:\n"+
+         "%true_ptr = getelementptr inbounds [6 x i8], [6 x i8]* @true_str, i32 0, i32 0\n"+
+         "call i32 (i8*, ...) @printf(i8* %true_ptr)\n"+
+         "ret void\n"+
+         "false_label:\n"+
+         "%false_ptr = getelementptr inbounds [7 x i8], [7 x i8]* @false_str, i32 0, i32 0\n"+
+         "call i32 (i8*, ...) @printf(i8* %false_ptr)\n"+
+         "ret void\n"+
+         "}\n";
        text += header_text;
        text += "define i32 @main() nounwind{\n";
        text += main_text;

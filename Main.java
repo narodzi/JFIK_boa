@@ -15,8 +15,6 @@ public class Main {
 
         //System.out.println(tree.toStringTree(parser));
 
-        System.out.print(';'); // todo remove
-
         ParseTreeWalker walker = new ParseTreeWalker();
         walker.walk(new LLVMActions(), tree);
 

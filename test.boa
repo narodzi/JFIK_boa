@@ -26,3 +26,30 @@ write xorbool
 shortcircuitbool = ((false & true) & true)
 write shortcircuitbool
 
+q = 7
+
+struct Punkt {
+    int x
+    int y
+}
+
+nowyPunkt = Punkt(((3)+(5)) (4))
+
+jeszczeJedenPunkt = Punkt((200) (300))
+
+write nowyPunkt.x
+write nowyPunkt.y
+
+write jeszczeJedenPunkt.x
+
+nowyPunkt.x = 32
+
+write nowyPunkt.x
+
+r = (nowyPunkt.x + nowyPunkt.y)
+
+write r
+
+p = (r  + q)
+
+write p

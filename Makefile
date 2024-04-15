@@ -2,13 +2,13 @@
 all: clean antlr compile run test
 
 antlr:
-	java -jar /usr/local/lib/antlr-4.13.1-complete.jar boa.g4
+	java -jar /usr/local/lib/antlr-4.13.1-complete.jar -o output boa.g4
 
 compile:
-	javac -cp /usr/local/lib/antlr-4.13.1-complete.jar:. *.java
+	javac -cp /usr/local/lib/antlr-4.13.1-complete.jar:output:. *.java
 
 run:
-	java -cp /usr/local/lib/antlr-4.13.1-complete.jar:. Main test.boa > test.ll
+	java -cp /usr/local/lib/antlr-4.13.1-complete.jar:output:. Main test.boa > test.ll
 
 test:
 	@echo '------------------------------'

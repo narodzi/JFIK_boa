@@ -1,7 +1,11 @@
 import java.util.HashMap;
 import java.util.Stack;
 
-enum VarType{ INT, REAL, BOOLEAN, STRING, UNKNOWN }
+import javax.sound.midi.SysexMessage;
+
+import java.util.ArrayList;
+
+enum VarType{ INT, REAL, BOOLEAN, STRING, STRUCTURE, UNKNOWN }
 
 class Value{ 
 	public String name;
@@ -14,16 +18,181 @@ class Value{
 	}
 }
 
+class Structure {
+   public String structureTypeName;
+   public HashMap<String, Value> variablesNames = new HashMap<String, Value>();
+   public ArrayList<String> definedStructures = new ArrayList<String>();
+
+   public Structure(String name) {
+      this.structureTypeName = name;
+   }
+}
+
 public class LLVMActions extends boaBaseListener {
 
     HashMap<String, VarType> variables = new HashMap<String, VarType>();
     Stack<Value> stack = new Stack<Value>();
 
+    HashMap<String, Structure> structures = new HashMap<String, Structure>();
+
     static int BUFFER_SIZE = 16;
+
+
+   // STRUCTURES ZONE
+   @Override
+   public void exitDefStruct(boaParser.DefStructContext ctx) {
+      Structure newStructureDefinition = new Structure(ctx.getChild(1).getText());
+      for(int i = 4; i < ctx.getChildCount()-2; i += 3) {
+         String type = ctx.getChild(i).getText();
+         if(!type.equals("int") && !type.equals("real") && !type.equals("bool")) {
+            error(ctx.getStart().getLine(), "Declared variable has unknown type");
+         }
+         String varName = ctx.getChild(i+1).getText();
+
+         switch(type) {
+            case "int":
+               newStructureDefinition.variablesNames.put(varName, new Value(varName, VarType.INT, 0));
+            break;
+            case "real":
+               newStructureDefinition.variablesNames.put(varName, new Value(varName, VarType.REAL, 0));
+            break;
+            case "bool":
+               newStructureDefinition.variablesNames.put(varName, new Value(varName, VarType.BOOLEAN, 0));
+            break;
+         }
+      }
+      structures.put(newStructureDefinition.structureTypeName, newStructureDefinition);
+
+      LLVMGenerator.begin_struct_declaration(newStructureDefinition.structureTypeName);
+      for(Value value: newStructureDefinition.variablesNames.values()) {
+         if(value.type == VarType.INT) {
+            LLVMGenerator.declare_i32_struct_variable();
+         }
+         if(value.type == VarType.REAL) {
+            LLVMGenerator.declare_double_struct_variable();
+         }
+         if(value.type == VarType.BOOLEAN) {
+            LLVMGenerator.declare_boolean_struct_variable();
+         }
+      }
+      LLVMGenerator.end_struct_declaration();
+   }      
+
+   @Override
+   public void exitNewStruct(boaParser.NewStructContext ctx) {
+      String variableName = ctx.getChild(0).getText();
+      String structureName = ctx.getChild(2).getText();
+      if(structures.containsKey(structureName)) {
+         LLVMGenerator.define_structure(variableName, structureName);
+         String llvmStructureName = "%" + variableName;
+
+         int index = 0;
+         for(Value variable : structures.get(structureName).variablesNames.values()) {
+            Value v = stack.reversed().removeLast();
+            String llvmVariableName = llvmStructureName + "_" + variable.name;
+
+            if(variable.name.contains("%")) {
+               llvmVariableName = llvmStructureName + "_" + variable.name.replace("%", "pr");
+            }
+
+            LLVMGenerator.assign_value_to_structure_variable(structureName, llvmStructureName, llvmVariableName, index);
+            switch(v.type) {
+               case INT:
+                  LLVMGenerator.assign_i32(llvmVariableName.substring(1), v.name);
+               break;
+               case REAL:
+                  LLVMGenerator.assign_double(llvmVariableName.substring(1), v.name);
+               break;
+               case BOOLEAN:
+                  LLVMGenerator.assign_boolean(llvmVariableName.substring(1), v.name);
+               break;
+               default:
+                  error(ctx.getStart().getLine(), "invalid type");
+               break;
+            }
+            index++;
+         }
+
+         if(!structures.get(structureName).definedStructures.contains(variableName)) {
+            structures.get(structureName).definedStructures.add(variableName);
+            variables.put(variableName, VarType.STRUCTURE);
+         } else {
+            error(ctx.getStart().getLine(), "Duplicated variable name");
+         }
+
+      } else { // nie znaleziono struktury o takiej nazwie
+         error(ctx.getStart().getLine(), "Mismatched structure type");
+      }
+   }
+
+   @Override
+   public void exitIdVal(boaParser.IdValContext ctx) {
+      String ID = ctx.ID().getText();
+      if(ID.contains(".")) {
+         String structureVarName = ID.substring(0, ID.indexOf("."));
+         String nestedVariableName = ID.substring(ID.indexOf(".")+1);
+         boolean definitionNotFound = false;
+
+         for(Structure s : structures.values()) {
+            if(s.definedStructures.contains(structureVarName)) {
+               Value nestedVar = s.variablesNames.get(nestedVariableName);
+               if(nestedVar != null) {
+                  switch(nestedVar.type) {
+                     case INT:
+                        LLVMGenerator.load_i32(structureVarName + '_' + nestedVariableName);
+                        stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.INT, 0) );    
+                     break;
+                     case REAL:
+                        LLVMGenerator.load_double(structureVarName + '_' + nestedVariableName);
+                        stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.REAL, 0) );       
+                     break;
+                     case BOOLEAN:
+                        LLVMGenerator.load_boolean(structureVarName + '_' + nestedVariableName);
+                        stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.BOOLEAN, 0) );       
+                     break;
+                     default: 
+                  }
+               } else {
+                  error(ctx.getStart().getLine(), "Invalid " + nestedVariableName + " nested variable name of structure "+ s.structureTypeName);
+               }
+   
+            } else {
+               definitionNotFound = true;
+            }
+
+         }
+
+         if(definitionNotFound) {
+            error(ctx.getStart().getLine(), structureVarName + "  has not been defined");
+         }
+      } else {
+         if(variables.containsKey(ID)) {
+            switch(variables.get(ID)) {
+               case INT:
+                  LLVMGenerator.load_i32(ID);
+                  stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.INT, 0) );     
+               break;
+               case REAL:
+                  LLVMGenerator.load_i32(ID);
+                  stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.REAL, 0) );        
+               break;
+               case BOOLEAN:
+                  LLVMGenerator.load_i32(ID);
+                  stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.BOOLEAN, 0) );          
+               break; 
+               default: 
+            }
+         } else {
+            error(ctx.getStart().getLine(), ID + " not exist");
+         }
+
+      }
+   }
+
+   // STRUCTURES ZONE END
 
     @Override 
     public void exitProg(boaParser.ProgContext ctx) { 
-       System.out.println(); // todo remove
        System.out.println( LLVMGenerator.generate() );
     }
 
@@ -31,22 +200,60 @@ public class LLVMActions extends boaBaseListener {
     public void exitAssign(boaParser.AssignContext ctx) { 
        String ID = ctx.ID().getText();
        Value v = stack.pop();
-       variables.put(ID, v.type);
-       if( v.type == VarType.INT ){
-         LLVMGenerator.declare_i32(ID);
-         LLVMGenerator.assign_i32(ID, v.name);
-       } 
-       if( v.type == VarType.REAL ){
-         LLVMGenerator.declare_double(ID);
-         LLVMGenerator.assign_double(ID, v.name);
-       } 
-       if( v.type == VarType.STRING ){
-         LLVMGenerator.declare_string(ID);
-         LLVMGenerator.assign_string(ID);
-       }
-       if (v.type == VarType.BOOLEAN) {
-         LLVMGenerator.declare_boolean(ID);
-         LLVMGenerator.assing_boolean(ID, v.name);
+
+      if(ID.contains(".")) {
+         String structureVarName = ID.substring(0, ID.indexOf("."));
+         String nestedVariableName = ID.substring(ID.indexOf(".")+1);
+         boolean definitionNotFound = false;
+
+         for(Structure s : structures.values()) {
+            if(s.definedStructures.contains(structureVarName)) {
+               Value nestedVar = s.variablesNames.get(nestedVariableName);
+               if(nestedVar != null) {
+                  switch(nestedVar.type) {
+                     case INT:
+                        LLVMGenerator.assign_i32(structureVarName + '_' + nestedVariableName, v.name);
+                     break;
+                     case REAL:
+                        LLVMGenerator.assign_double(structureVarName + '_' + nestedVariableName, v.name);
+                     break;
+                     case BOOLEAN:
+                        LLVMGenerator.assign_boolean(structureVarName + '_' + nestedVariableName, v.name);
+                     break;
+                     default: 
+                  }
+               } else {
+                  error(ctx.getStart().getLine(), "Invalid " + nestedVariableName + " nested variable name of structure "+ s.structureTypeName);
+               }
+   
+            } else {
+               definitionNotFound = true;
+            }
+
+         }
+
+         if(definitionNotFound) {
+            error(ctx.getStart().getLine(), structureVarName + "  has not been defined");
+         }
+
+      } else {
+         variables.put(ID, v.type);
+         if( v.type == VarType.INT ){
+           LLVMGenerator.declare_i32(ID);
+           LLVMGenerator.assign_i32(ID, v.name);
+         } 
+         if( v.type == VarType.REAL ){
+           LLVMGenerator.declare_double(ID);
+           LLVMGenerator.assign_double(ID, v.name);
+         } 
+         if( v.type == VarType.STRING ){
+           LLVMGenerator.declare_string(ID);
+           LLVMGenerator.assign_string(ID);
+         }
+         if (v.type == VarType.BOOLEAN) {
+           LLVMGenerator.declare_boolean(ID);
+           LLVMGenerator.assign_boolean(ID, v.name);
+        }
       }
     }
 
@@ -208,13 +415,8 @@ public class LLVMActions extends boaBaseListener {
    public void exitSceand(boaParser.SceandContext ctx) {
       Value v1 = stack.pop();
       Value v2 = stack.pop();
-
-      System.out.print("sceand");
-      System.out.print(v1.name);
-      System.out.print(v2.name);
       if (v1.type == v2.type) {
          if (v1.type == VarType.BOOLEAN) {
-            System.out.print(v2.name);
             if(v2.name.equals("false")) {
                LLVMGenerator.assign_false();
                stack.push(new Value("%" + (LLVMGenerator.reg - 1), VarType.BOOLEAN, 0));
@@ -275,7 +477,6 @@ public class LLVMActions extends boaBaseListener {
     public void exitReadreal(boaParser.ReadrealContext ctx){
       String ID = ctx.ID().getText();
       if( ! variables.containsKey(ID) ) {
-         System.out.println(variables.containsKey(ID));
          variables.put(ID, VarType.REAL);
          LLVMGenerator.declare_double(ID);     
       }
@@ -308,7 +509,42 @@ public class LLVMActions extends boaBaseListener {
           if (type == VarType.BOOLEAN) {
             LLVMGenerator.printf_boolean(ID);
          }
-       } else {
+       } else if(ID.contains(".")) {
+         String structureVarName = ID.substring(0, ID.indexOf("."));
+         String nestedVariableName = ID.substring(ID.indexOf(".")+1);
+         boolean definitionNotFound = false;
+
+         for(Structure s : structures.values()) {
+            if(s.definedStructures.contains(structureVarName)) {
+               Value nestedVar = s.variablesNames.get(nestedVariableName);
+               if(nestedVar != null) {
+                  switch(nestedVar.type) {
+                     case INT:
+                        LLVMGenerator.printf_i32(structureVarName + '_' + nestedVariableName);
+                     break;
+                     case REAL:
+                        LLVMGenerator.printf_double(structureVarName + '_' + nestedVariableName);
+                     break;
+                     case BOOLEAN:
+                        LLVMGenerator.printf_boolean(structureVarName + '_' + nestedVariableName);
+                     break;
+                     default: 
+                  }
+               } else {
+                  error(ctx.getStart().getLine(), "Invalid " + nestedVariableName + " nested variable name of structure "+ s.structureTypeName);
+               }
+   
+            } else {
+               definitionNotFound = true;
+            }
+
+         }
+
+         if(definitionNotFound) {
+            error(ctx.getStart().getLine(), structureVarName + "  has not been defined");
+         }
+
+      } else {
           error(ctx.getStart().getLine(), "unknown variable "+ID);
        }
     } 
