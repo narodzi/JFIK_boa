@@ -6,6 +6,7 @@ prog: ( stat? NEWLINE )*
 stat:   WRTIE ID	#write
     | READINT ID    #readint
     | READREAL ID   #readreal
+    | READSTR ID    #readstr
 	| ID '=' value	#assign
    ;
 
@@ -32,11 +33,12 @@ expr3: mathExpr #single3
 
 mathExpr: INT           #int
         | REAL          #real
+        | STRING        #string
         | TOINT mathExpr    #toint
         | TOREAL mathExpr   #toreal
+        | TOSTR mathExpr    #tostr
         | '(' expr0 ')'     #par
     ;
-
 
 bexpr0: bexpr1 #singleb0
         | bexpr1 AND bexpr1 #and
@@ -66,6 +68,9 @@ READINT:	'readint'
 READREAL:	'readreal' 
    ;
 
+READSTR:	'readstr'
+    ;
+
 WRTIE:	'write' 
     ;
 
@@ -90,6 +95,9 @@ XOR: 'xor'
 NEG: 'neg'
     ;
 
+TOSTR: '(str)'
+    ;
+
 ID:   ('a'..'z'|'A'..'Z')+
    ;
 
@@ -97,6 +105,9 @@ REAL: [0-9]+.[0-9]+
     ;
 
 INT:   [0-9]+
+    ;
+
+STRING :  '"' ( ~('\\'|'"') )* '"'
     ;
 
 ADD: '+'

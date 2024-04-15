@@ -11,6 +11,9 @@ write z
 readint integer
 write integer
 
+a = ("Hello" + "world")
+write a
+
 andbool = (true and false)
 write andbool
 
