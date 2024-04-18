@@ -75,6 +75,11 @@ class LLVMGenerator {
        reg++;     
     }
 
+    static void scanf_boolean(String id){
+      main_text += "%"+reg+" = call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([3 x i8], [3 x i8]* @strs, i32 0, i32 0), i1* %"+id+")\n";
+      reg++;     
+   }
+
     static void scanf_string(String id, int l){
        allocate_string("str"+str, l);
        main_text += "%"+id+" = alloca i8*\n";

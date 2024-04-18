@@ -173,11 +173,11 @@ public class LLVMActions extends boaBaseListener {
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.INT, 0) );     
                break;
                case REAL:
-                  LLVMGenerator.load_i32(ID);
+                  LLVMGenerator.load_double(ID);
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.REAL, 0) );        
                break;
                case BOOLEAN:
-                  LLVMGenerator.load_i32(ID);
+                  LLVMGenerator.load_boolean(ID);
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.BOOLEAN, 0) );          
                break; 
                default: 
