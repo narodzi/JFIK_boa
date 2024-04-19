@@ -265,6 +265,7 @@ public class LLVMActions extends boaBaseListener {
       } else {
          ID = global ? "@" + ID : "%" + ID;
          if(global){
+            if(!variables.containsKey(ID)) {            
             variables.put(ID, v.type);
             if( v.type == VarType.INT ){
             LLVMGenerator.declare_global_i32(ID);
@@ -285,21 +286,51 @@ public class LLVMActions extends boaBaseListener {
          }
          else{
             local_variables.put(ID, v.type);
-            if( v.type == VarType.INT ){
-            LLVMGenerator.declare_i32(ID);
-            LLVMGenerator.assign_i32(ID, v.name);
-            } 
-            if( v.type == VarType.REAL ){
-            LLVMGenerator.declare_double(ID);
-            LLVMGenerator.assign_double(ID, v.name);
-            } 
-            if( v.type == VarType.STRING ){
-            LLVMGenerator.declare_string(ID);
-            LLVMGenerator.assign_string(ID);
+               if( v.type == VarType.INT ){
+               LLVMGenerator.declare_i32(ID);
+               LLVMGenerator.assign_i32(ID, v.name);
+               } 
+               if( v.type == VarType.REAL ){
+               LLVMGenerator.declare_double(ID);
+               LLVMGenerator.assign_double(ID, v.name);
+               } 
+               if( v.type == VarType.STRING ){
+               LLVMGenerator.declare_string(ID);
+               LLVMGenerator.assign_string(ID);
+               }
+               if (v.type == VarType.BOOLEAN) {
+               LLVMGenerator.declare_boolean(ID);
+               LLVMGenerator.assign_boolean(ID, v.name);
             }
-            if (v.type == VarType.BOOLEAN) {
-            LLVMGenerator.declare_boolean(ID);
-            LLVMGenerator.assign_boolean(ID, v.name);
+         } else {
+            if( v.type == VarType.INT ){
+               if(variables.get(ID) == VarType.INT) {
+                  LLVMGenerator.assign_i32(ID, v.name);
+               } else {
+                  error(ctx.getStart().getLine(), ID + " is type int, invalid assignment operation");
+               }
+             } 
+             if( v.type == VarType.REAL ){
+               if(variables.get(ID) == VarType.REAL) {
+                  LLVMGenerator.assign_double(ID, v.name);
+               } else {
+                  error(ctx.getStart().getLine(), ID + " is type real, invalid assignment operation");
+               }
+             } 
+             if( v.type == VarType.STRING ){
+               if(variables.get(ID) == VarType.STRING) {
+                  LLVMGenerator.assign_string(ID);
+               } else {
+                  error(ctx.getStart().getLine(), ID + " is type real, invalid assignment operation");
+               }
+             }
+             if (v.type == VarType.BOOLEAN) {
+               if(variables.get(ID) == VarType.BOOLEAN) {
+                  LLVMGenerator.assign_string(ID);
+               } else {
+                  error(ctx.getStart().getLine(), ID + " is type boolean, invalid assignment operation");
+               }
+            }
          }
          }
       }
@@ -632,6 +663,16 @@ public class LLVMActions extends boaBaseListener {
          LLVMGenerator.declare_double(ID);     
       } 
       LLVMGenerator.scanf_double(ID);
+    }
+
+    @Override 
+    public void exitReadbool(boaParser.ReadboolContext ctx){
+      String ID = ctx.ID().getText();
+      if( ! variables.containsKey(ID) ) {
+         variables.put(ID, VarType.BOOLEAN);
+         LLVMGenerator.declare_boolean(ID);     
+      }
+      LLVMGenerator.scanf_boolean(ID);
     }
 
     @Override

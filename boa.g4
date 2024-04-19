@@ -10,6 +10,7 @@ stat: REPEAT repetitions '{' block '}'                  #repeat
     | WRTIE ID	                                        #write
     | READINT ID                                        #readint
     | READREAL ID                                       #readreal
+    | READBOOL ID   #readbool
     | READSTR ID                                        #readstr
 	| ID '=' value	                                    #assign
     | 'struct' ID '{' NEWLINE (TYPE ID NEWLINE)+ '}'    #defStruct
@@ -109,6 +110,9 @@ READINT:	'readint'
 
 READREAL:	'readreal' 
    ;
+
+READBOOL: 'readbool'
+    ;
 
 READSTR:	'readstr'
     ;
