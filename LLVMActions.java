@@ -1,11 +1,13 @@
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.Stack;
+import java.util.HashSet;
 
 import javax.sound.midi.SysexMessage;
 
 import java.util.ArrayList;
 
-enum VarType{ INT, REAL, BOOLEAN, STRING, STRUCTURE, UNKNOWN }
+enum VarType{ INT, REAL, BOOLEAN, STRING, STRUCTURE, FUNCTION, UNKNOWN }
 
 class Value{ 
 	public String name;
@@ -29,8 +31,13 @@ class Structure {
 }
 
 public class LLVMActions extends boaBaseListener {
+    HashSet<String> functions = new HashSet<String>();
+    HashSet<String> localnames = new HashSet<String>();
+    String value, function;
+    Boolean global;
 
     HashMap<String, VarType> variables = new HashMap<String, VarType>();
+    HashMap<String, VarType> local_variables = new HashMap<String, VarType>();
     Stack<Value> stack = new Stack<Value>();
 
     HashMap<String, Structure> structures = new HashMap<String, Structure>();
@@ -88,6 +95,8 @@ public class LLVMActions extends boaBaseListener {
 
          int index = 0;
          for(Value variable : structures.get(structureName).variablesNames.values()) {
+            // LinkedList<Value> list = new LinkedList<>(stack);
+            // Value v = list.removeLast();
             Value v = stack.reversed().removeLast();
             String llvmVariableName = llvmStructureName + "_" + variable.name;
 
@@ -98,13 +107,13 @@ public class LLVMActions extends boaBaseListener {
             LLVMGenerator.assign_value_to_structure_variable(structureName, llvmStructureName, llvmVariableName, index);
             switch(v.type) {
                case INT:
-                  LLVMGenerator.assign_i32(llvmVariableName.substring(1), v.name);
+                  LLVMGenerator.assign_i32('%' + llvmVariableName.substring(1), v.name);
                break;
                case REAL:
-                  LLVMGenerator.assign_double(llvmVariableName.substring(1), v.name);
+                  LLVMGenerator.assign_double('%' + llvmVariableName.substring(1), v.name);
                break;
                case BOOLEAN:
-                  LLVMGenerator.assign_boolean(llvmVariableName.substring(1), v.name);
+                  LLVMGenerator.assign_boolean('%' + llvmVariableName.substring(1), v.name);
                break;
                default:
                   error(ctx.getStart().getLine(), "invalid type");
@@ -139,15 +148,15 @@ public class LLVMActions extends boaBaseListener {
                if(nestedVar != null) {
                   switch(nestedVar.type) {
                      case INT:
-                        LLVMGenerator.load_i32(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.load_i32("%" + structureVarName + '_' + nestedVariableName);
                         stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.INT, 0) );    
                      break;
                      case REAL:
-                        LLVMGenerator.load_double(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.load_double('%' + structureVarName + '_' + nestedVariableName);
                         stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.REAL, 0) );       
                      break;
                      case BOOLEAN:
-                        LLVMGenerator.load_boolean(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.load_boolean('%' + structureVarName + '_' + nestedVariableName);
                         stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.BOOLEAN, 0) );       
                      break;
                      default: 
@@ -166,18 +175,29 @@ public class LLVMActions extends boaBaseListener {
             error(ctx.getStart().getLine(), structureVarName + "  has not been defined");
          }
       } else {
-         if(variables.containsKey(ID)) {
-            switch(variables.get(ID)) {
+        String newID = "@"+ID;
+        VarType type = variables.get(newID);
+        if(type != null && !global) { 
+            newID = "%"+ID;
+            type = local_variables.get(newID); 
+        }
+        if(type != null && !global) { 
+         newID = "%"+ID;
+         type = local_variables.get(newID); 
+        }   
+        ID = newID;
+         if(variables.containsKey(ID) || local_variables.containsKey(ID)) {
+            switch(variables.get(ID) != null ? variables.get(ID) : local_variables.get(ID)) {
                case INT:
                   LLVMGenerator.load_i32(ID);
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.INT, 0) );     
                break;
                case REAL:
-                  LLVMGenerator.load_i32(ID);
+                  LLVMGenerator.load_double(ID);
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.REAL, 0) );        
                break;
                case BOOLEAN:
-                  LLVMGenerator.load_i32(ID);
+                  LLVMGenerator.load_boolean(ID);
                   stack.push( new Value("%" + (LLVMGenerator.reg-1) , VarType.BOOLEAN, 0) );          
                break; 
                default: 
@@ -191,8 +211,14 @@ public class LLVMActions extends boaBaseListener {
 
    // STRUCTURES ZONE END
 
+   @Override
+   public void enterProg(boaParser.ProgContext ctx) {
+      global = true;
+   }
+
     @Override 
     public void exitProg(boaParser.ProgContext ctx) { 
+       LLVMGenerator.close_main();
        System.out.println( LLVMGenerator.generate() );
     }
 
@@ -212,13 +238,13 @@ public class LLVMActions extends boaBaseListener {
                if(nestedVar != null) {
                   switch(nestedVar.type) {
                      case INT:
-                        LLVMGenerator.assign_i32(structureVarName + '_' + nestedVariableName, v.name);
+                        LLVMGenerator.assign_i32('%' + structureVarName + '_' + nestedVariableName, v.name);
                      break;
                      case REAL:
-                        LLVMGenerator.assign_double(structureVarName + '_' + nestedVariableName, v.name);
+                        LLVMGenerator.assign_double('%' + structureVarName + '_' + nestedVariableName, v.name);
                      break;
                      case BOOLEAN:
-                        LLVMGenerator.assign_boolean(structureVarName + '_' + nestedVariableName, v.name);
+                        LLVMGenerator.assign_boolean('%' + structureVarName + '_' + nestedVariableName, v.name);
                      break;
                      default: 
                   }
@@ -237,23 +263,45 @@ public class LLVMActions extends boaBaseListener {
          }
 
       } else {
-         variables.put(ID, v.type);
-         if( v.type == VarType.INT ){
-           LLVMGenerator.declare_i32(ID);
-           LLVMGenerator.assign_i32(ID, v.name);
-         } 
-         if( v.type == VarType.REAL ){
-           LLVMGenerator.declare_double(ID);
-           LLVMGenerator.assign_double(ID, v.name);
-         } 
-         if( v.type == VarType.STRING ){
-           LLVMGenerator.declare_string(ID);
-           LLVMGenerator.assign_string(ID);
+         ID = global ? "@" + ID : "%" + ID;
+         if(global){
+            variables.put(ID, v.type);
+            if( v.type == VarType.INT ){
+            LLVMGenerator.declare_global_i32(ID);
+            LLVMGenerator.assign_i32(ID, v.name);
+            } 
+            if( v.type == VarType.REAL ){
+            LLVMGenerator.declare_global_double(ID);
+            LLVMGenerator.assign_double(ID, v.name);
+            } 
+            if( v.type == VarType.STRING ){
+            LLVMGenerator.declare_global_string(ID);
+            LLVMGenerator.assign_string(ID);
+            }
+            if (v.type == VarType.BOOLEAN) {
+            LLVMGenerator.declare_global_boolean(ID);
+            LLVMGenerator.assign_boolean(ID, v.name);
+            }
          }
-         if (v.type == VarType.BOOLEAN) {
-           LLVMGenerator.declare_boolean(ID);
-           LLVMGenerator.assign_boolean(ID, v.name);
-        }
+         else{
+            local_variables.put(ID, v.type);
+            if( v.type == VarType.INT ){
+            LLVMGenerator.declare_i32(ID);
+            LLVMGenerator.assign_i32(ID, v.name);
+            } 
+            if( v.type == VarType.REAL ){
+            LLVMGenerator.declare_double(ID);
+            LLVMGenerator.assign_double(ID, v.name);
+            } 
+            if( v.type == VarType.STRING ){
+            LLVMGenerator.declare_string(ID);
+            LLVMGenerator.assign_string(ID);
+            }
+            if (v.type == VarType.BOOLEAN) {
+            LLVMGenerator.declare_boolean(ID);
+            LLVMGenerator.assign_boolean(ID, v.name);
+         }
+         }
       }
     }
 
@@ -294,10 +342,6 @@ public class LLVMActions extends boaBaseListener {
              LLVMGenerator.add_double(v1.name, v2.name); 
              stack.push( new Value("%"+(LLVMGenerator.reg-1), VarType.REAL, 0) ); 
          }
-     if( v1.type == VarType.STRING){
-             LLVMGenerator.add_string(v1.name, v1.length, v2.name, v2.length);
-             stack.push(new Value("%"+(LLVMGenerator.reg-3), VarType.STRING, v1.length) );   
-     }
        } else {
           error(ctx.getStart().getLine(), "add type mismatch");
        }
@@ -449,6 +493,103 @@ public class LLVMActions extends boaBaseListener {
       }
    }
 
+   @Override
+   public void exitBlock(boaParser.BlockContext ctx) {
+      if( ctx.getParent() instanceof boaParser.RepeatContext ){
+         LLVMGenerator.repeatEnd();
+     }
+   }
+   
+   @Override
+   public void exitRepetitions(boaParser.RepetitionsContext ctx) {
+       String value = "";
+       if(ctx.ID() != null) {
+           String ID = ctx.ID().getText();
+           if(variables.containsKey(ID)) {
+               if(variables.get(ID).equals("int")) {
+                   LLVMGenerator.load_i32(ID);
+                   value = "%" + (LLVMGenerator.reg - 1);
+               } else {
+                   error(ctx.getStart().getLine(), "Mismatch type in loop");
+               }
+           } else {
+               error(ctx.getStart().getLine(), "Unknown variable "+ID);
+           }
+       } else if (ctx.INT() != null) {
+           value = ctx.INT().getText();
+       }
+       LLVMGenerator.repeatStart(value);
+   }
+
+   @Override
+    public void exitIf(boaParser.IfContext ctx) {
+    }
+
+    @Override
+    public void enterBlockif(boaParser.BlockifContext ctx) {
+        LLVMGenerator.ifstart();
+    }
+
+    @Override
+    public void exitBlockif(boaParser.BlockifContext ctx) {
+        LLVMGenerator.ifend();
+    }
+
+    @Override
+    public void exitEqual(boaParser.EqualContext ctx) {
+        String ID = ctx.ID().getText();
+        ID = global ? "@" + ID : "%" + ID;
+        String INT = ctx.INT().getText();
+        if( variables.containsKey(ID) ) {
+            LLVMGenerator.icmp( ID, INT );
+        } else {
+            ctx.getStart().getLine();
+            System.err.println("Line "+ ctx.getStart().getLine()+", unknown variable: "+ID);
+        }
+    }
+
+    @Override
+    public void exitFparam(boaParser.FparamContext ctx) {
+        String ID = ctx.ID().getText(); 
+        if (!variables.containsKey(ID)) { 
+            variables.put(ID, VarType.FUNCTION); 
+            functions.add(ID); 
+            function = ID; 
+            LLVMGenerator.functionstart(ID);
+        } else { 
+            error(ctx.getStart().getLine(), "Name " + ID + " already declared");
+        }
+    }
+
+    @Override
+    public void enterFblock(boaParser.FblockContext ctx) {
+        global = false; 
+    }
+
+    @Override
+    public void exitFblock(boaParser.FblockContext ctx) {
+        String ID = function;
+        if(!local_variables.containsKey(function) ){ 
+         local_variables.put(function, VarType.FUNCTION);
+            LLVMGenerator.declare_i32("%"+ID);
+            LLVMGenerator.assign_i32("%"+ID, "0"); 
+        }
+        LLVMGenerator.load_i32( "%"+ID ); 
+        LLVMGenerator.functionend(); 
+        local_variables = new HashMap<String, VarType>();
+        global = true; 
+    }
+
+    @Override
+    public void exitCall(boaParser.CallContext ctx) {
+        String ID = ctx.ID().getText();
+        if(functions.contains(ID)) {
+            LLVMGenerator.call(ID);
+        } else {
+            error(ctx.getStart().getLine(), ID + " is not a fuction");
+        }
+    }
+
     @Override 
     public void exitToint(boaParser.TointContext ctx) { 
        Value v = stack.pop();
@@ -466,8 +607,13 @@ public class LLVMActions extends boaBaseListener {
     @Override
     public void exitReadint(boaParser.ReadintContext ctx){
       String ID = ctx.ID().getText();
-      if( ! variables.containsKey(ID) ) {
+      ID = global ? "@" + ID : "%" + ID;
+      if( ! variables.containsKey(ID) && global) {
          variables.put(ID, VarType.INT);
+         LLVMGenerator.declare_global_i32(ID);      
+      }
+      else if( ! local_variables.containsKey(ID) && !global) {
+         local_variables.put(ID, VarType.INT);
          LLVMGenerator.declare_i32(ID);      
       }
       LLVMGenerator.scanf_i32(ID);
@@ -476,26 +622,49 @@ public class LLVMActions extends boaBaseListener {
     @Override 
     public void exitReadreal(boaParser.ReadrealContext ctx){
       String ID = ctx.ID().getText();
-      if( ! variables.containsKey(ID) ) {
+      ID = global ? "@" + ID : "%" + ID;
+      if( ! variables.containsKey(ID) && global) {
          variables.put(ID, VarType.REAL);
-         LLVMGenerator.declare_double(ID);     
+         LLVMGenerator.declare_global_double(ID);     
       }
+      else if( ! local_variables.containsKey(ID) && !global) {
+         local_variables.put(ID, VarType.REAL);
+         LLVMGenerator.declare_double(ID);     
+      } 
       LLVMGenerator.scanf_double(ID);
     }
 
     @Override
     public void exitReadstr(boaParser.ReadstrContext ctx){
       String ID = ctx.ID().getText();
-      if( ! variables.containsKey(ID) ) {
+      ID = global ? "@" + ID : "%" + ID;
+      if( ! variables.containsKey(ID) && global) {
          variables.put(ID, VarType.STRING);
+      }
+      else if( ! local_variables.containsKey(ID) && !global) {
+         local_variables.put(ID, VarType.STRING);
       }
        LLVMGenerator.scanf_string(ID, BUFFER_SIZE);
     }
 
     @Override
     public void exitWrite(boaParser.WriteContext ctx) {
-       String ID = ctx.ID().getText();
-       VarType type = variables.get(ID);
+      String ID = ctx.ID().getText(); 
+      String newID = "@"+ID;
+      VarType type = variables.get(newID);
+      if(type == null && !global) { 
+          newID = "%"+ID;
+          type = local_variables.get(newID); 
+      }
+      if(type != null && !global) { 
+         newID = "%"+ID;
+         type = local_variables.get(newID); 
+     }
+      ID = newID;
+      if (type == null) { 
+          ID = ctx.ID().getText();
+          type = variables.get(ID);
+      }
        if( type != null ) {
           if( type == VarType.INT ){
             LLVMGenerator.printf_i32( ID );
@@ -520,13 +689,13 @@ public class LLVMActions extends boaBaseListener {
                if(nestedVar != null) {
                   switch(nestedVar.type) {
                      case INT:
-                        LLVMGenerator.printf_i32(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.printf_i32('%' + structureVarName + '_' + nestedVariableName);
                      break;
                      case REAL:
-                        LLVMGenerator.printf_double(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.printf_double('%' + structureVarName + '_' + nestedVariableName);
                      break;
                      case BOOLEAN:
-                        LLVMGenerator.printf_boolean(structureVarName + '_' + nestedVariableName);
+                        LLVMGenerator.printf_boolean('%' + structureVarName + '_' + nestedVariableName);
                      break;
                      default: 
                   }

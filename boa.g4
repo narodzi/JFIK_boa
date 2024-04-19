@@ -1,16 +1,50 @@
 grammar boa;
 
-prog: ( stat? NEWLINE )* 
+prog: block;
+
+block: ( stat|function? NEWLINE )* 
     ;
 
-stat:   WRTIE ID	#write
-    | READINT ID    #readint
-    | READREAL ID   #readreal
-    | READSTR ID    #readstr
-	| ID '=' value	#assign
-    | 'struct' ID '{' NEWLINE (TYPE ID NEWLINE)+ '}' #defStruct
-    | ID '=' ID '(' (value)* ')' #newStruct
+stat: REPEAT repetitions '{' block '}'                  #repeat
+    | IF equal '{' blockif '}'                          #if    
+    | WRTIE ID	                                        #write
+    | READINT ID                                        #readint
+    | READREAL ID                                       #readreal
+    | READSTR ID                                        #readstr
+	| ID '=' value	                                    #assign
+    | 'struct' ID '{' NEWLINE (TYPE ID NEWLINE)+ '}'    #defStruct
+    | ID '=' ID '(' (value)* ')'                        #newStruct
+    | ID '()'                                           #call
    ;
+
+function: FUNCTION fparam '{' fblock '}'
+;
+
+fblock: ( stat? NEWLINE)*
+;
+
+fparam: ID
+;
+
+FUNCTION: 'func'
+;
+
+blockif: block
+;
+
+equal: ID '==' INT
+;
+
+IF: 'whether'
+;
+
+repetitions: INT
+    | ID
+;
+
+REPEAT: 'loop'
+;
+
 
 value: mathExpr 
     | boolExpr 

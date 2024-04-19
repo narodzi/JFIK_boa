@@ -1,6 +1,3 @@
-x = 5.0
-readreal x
-write x
 
 y = (3.0 + 1.0)
 write y
@@ -11,8 +8,6 @@ write z
 readint integer
 write integer
 
-readstr a
-write a
 
 andbool = (true and false)
 write andbool
@@ -53,3 +48,30 @@ write r
 p = (r  + q)
 
 write p
+
+tekst = "tekst"
+
+loop 5 {
+    write tekst
+}
+
+equal = "equal 7"
+
+
+tmp = 6
+
+whether tmp == 7 {
+    write equal
+}
+
+x = 6.1
+
+func funkcja {
+    readreal a
+    write a
+}
+
+funkcja ()
+
+write x
+write z
