@@ -514,6 +514,16 @@ public class LLVMActions extends boaBaseListener {
       LLVMGenerator.scanf_double(ID);
     }
 
+    @Override 
+    public void exitReadbool(boaParser.ReadboolContext ctx){
+      String ID = ctx.ID().getText();
+      if( ! variables.containsKey(ID) ) {
+         variables.put(ID, VarType.BOOLEAN);
+         LLVMGenerator.declare_boolean(ID);     
+      }
+      LLVMGenerator.scanf_boolean(ID);
+    }
+
     @Override
     public void exitReadstr(boaParser.ReadstrContext ctx){
       String ID = ctx.ID().getText();
