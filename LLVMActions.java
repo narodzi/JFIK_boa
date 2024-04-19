@@ -95,9 +95,9 @@ public class LLVMActions extends boaBaseListener {
 
          int index = 0;
          for(Value variable : structures.get(structureName).variablesNames.values()) {
-            // LinkedList<Value> list = new LinkedList<>(stack);
-            // Value v = list.removeLast();
-            Value v = stack.reversed().removeLast();
+            LinkedList<Value> list = new LinkedList<>(stack);
+            Value v = list.removeLast();
+            // Value v = stack.reversed().removeLast();
             String llvmVariableName = llvmStructureName + "_" + variable.name;
 
             if(variable.name.contains("%")) {
@@ -264,8 +264,8 @@ public class LLVMActions extends boaBaseListener {
 
       } else {
          ID = global ? "@" + ID : "%" + ID;
-         if(global){
-            if(!variables.containsKey(ID)) {            
+         if(!variables.containsKey(ID)) {  
+            if(global){        
             variables.put(ID, v.type);
             if( v.type == VarType.INT ){
             LLVMGenerator.declare_global_i32(ID);
@@ -302,7 +302,9 @@ public class LLVMActions extends boaBaseListener {
                LLVMGenerator.declare_boolean(ID);
                LLVMGenerator.assign_boolean(ID, v.name);
             }
-         } else {
+         }
+      } 
+         else {
             if( v.type == VarType.INT ){
                if(variables.get(ID) == VarType.INT) {
                   LLVMGenerator.assign_i32(ID, v.name);
@@ -334,7 +336,7 @@ public class LLVMActions extends boaBaseListener {
          }
          }
       }
-    }
+    
 
     @Override 
     public void exitInt(boaParser.IntContext ctx) { 
