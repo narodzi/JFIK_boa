@@ -51,12 +51,16 @@ write p
 
 tekst = "tekst"
 
+it = 1
+
 loop 5 {
+    it = (it + 1)
     write tekst
 }
 
-equal = "equal 7"
+write it
 
+equal = "equal 7"
 
 tmp = 6
 
@@ -71,7 +75,13 @@ func funkcja {
     write a
 }
 
+func nadpisz {
+    x = 5.39
+    write x
+}
+
 funkcja ()
 
+nadpisz ()
+
 write x
-write z

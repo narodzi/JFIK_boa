@@ -95,9 +95,7 @@ public class LLVMActions extends boaBaseListener {
 
          int index = 0;
          for(Value variable : structures.get(structureName).variablesNames.values()) {
-            LinkedList<Value> list = new LinkedList<>(stack);
-            Value v = list.removeLast();
-            // Value v = stack.reversed().removeLast();
+            Value v = stack.reversed().removeLast();
             String llvmVariableName = llvmStructureName + "_" + variable.name;
 
             if(variable.name.contains("%")) {
